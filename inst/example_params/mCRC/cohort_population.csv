@@ -1,0 +1,9 @@
+cohort_id,age_group,sex,obs_length_bin,proportion
+mCRC,50_64,M,365_730,0.20
+mCRC,50_64,F,365_730,0.15
+mCRC,65_79,M,365_730,0.25
+mCRC,65_79,F,365_730,0.20
+mCRC,50_64,M,731_plus,0.05
+mCRC,50_64,F,731_plus,0.05
+mCRC,65_79,M,731_plus,0.05
+mCRC,65_79,F,731_plus,0.05

@@ -1,0 +1,8 @@
+cohort_id,regimen_id,regimen_name,line_preference,regimen_type,is_maintenance,notes
+mCRC,FOLFOX,FOLFOX,1,combination,FALSE,Fluorouracil + leucovorin + oxaliplatin
+mCRC,FOLFOX_bev,FOLFOX + Bevacizumab,1,combination,FALSE,FOLFOX with bevacizumab
+mCRC,FOLFIRI,FOLFIRI,2,combination,FALSE,Fluorouracil + leucovorin + irinotecan
+mCRC,FOLFIRI_bev,FOLFIRI + Bevacizumab,2,combination,FALSE,FOLFIRI with bevacizumab
+mCRC,CAPOX,CAPOX,1,combination,FALSE,Capecitabine + oxaliplatin
+mCRC,bev_maintenance,Bevacizumab Maintenance,1,monotherapy,TRUE,Maintenance after combination
+mCRC,pembro_mono,Pembrolizumab Monotherapy,1,monotherapy,FALSE,MSI-H patients

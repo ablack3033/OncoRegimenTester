@@ -1,0 +1,2 @@
+simulator_version,cohort_id,cohort_name,window_version,min_cell_count,generation_noise_mode,notes
+0.1.0,mCRC,Metastatic Colorectal Cancer,v1,5,none,Example parameter pack for method testing

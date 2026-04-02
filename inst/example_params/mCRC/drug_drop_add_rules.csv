@@ -1,0 +1,4 @@
+cohort_id,profile_id,regimen_id,modification_type,drug_feature_id,probability
+mCRC,chemo_combo,FOLFOX,drop,oxaliplatin,0.10
+mCRC,chemo_combo,FOLFOX_bev,drop,oxaliplatin,0.10
+mCRC,maintenance_path,FOLFOX_bev,drop,oxaliplatin,0.15

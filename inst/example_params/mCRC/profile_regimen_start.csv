@@ -1,0 +1,16 @@
+cohort_id,profile_id,line_number,regimen_id,probability
+mCRC,chemo_combo,1,FOLFOX,0.35
+mCRC,chemo_combo,1,FOLFOX_bev,0.35
+mCRC,chemo_combo,1,CAPOX,0.30
+mCRC,chemo_combo,2,FOLFIRI,0.45
+mCRC,chemo_combo,2,FOLFIRI_bev,0.55
+mCRC,chemo_combo,3,pembro_mono,1.00
+mCRC,maintenance_path,1,FOLFOX_bev,0.50
+mCRC,maintenance_path,1,FOLFOX,0.30
+mCRC,maintenance_path,1,CAPOX,0.20
+mCRC,maintenance_path,2,FOLFIRI_bev,0.60
+mCRC,maintenance_path,2,FOLFIRI,0.40
+mCRC,targeted_immuno,1,pembro_mono,0.60
+mCRC,targeted_immuno,1,FOLFOX_bev,0.40
+mCRC,targeted_immuno,2,FOLFIRI_bev,0.50
+mCRC,targeted_immuno,2,FOLFIRI,0.50

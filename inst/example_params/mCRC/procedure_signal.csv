@@ -1,0 +1,11 @@
+cohort_id,profile_id,window_id,procedure_feature_id,prevalence
+mCRC,chemo_combo,pre_index,colonoscopy,0.80
+mCRC,chemo_combo,pre_index,ct_scan,0.90
+mCRC,chemo_combo,line_1,ct_scan,0.70
+mCRC,maintenance_path,pre_index,colonoscopy,0.80
+mCRC,maintenance_path,pre_index,ct_scan,0.90
+mCRC,maintenance_path,line_1,ct_scan,0.65
+mCRC,targeted_immuno,pre_index,colonoscopy,0.85
+mCRC,targeted_immuno,pre_index,ct_scan,0.90
+mCRC,targeted_immuno,pre_index,msi_test,0.75
+mCRC,targeted_immuno,line_1,ct_scan,0.70

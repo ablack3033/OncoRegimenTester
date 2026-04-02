@@ -1,0 +1,10 @@
+cohort_id,profile_id,window_id,measurement_feature_id,prevalence
+mCRC,chemo_combo,pre_index,cea_level,0.85
+mCRC,chemo_combo,line_1,cea_level,0.70
+mCRC,chemo_combo,line_1,neutrophil_count,0.60
+mCRC,maintenance_path,pre_index,cea_level,0.85
+mCRC,maintenance_path,line_1,cea_level,0.65
+mCRC,maintenance_path,line_1,neutrophil_count,0.55
+mCRC,targeted_immuno,pre_index,cea_level,0.85
+mCRC,targeted_immuno,pre_index,pdl1_score,0.60
+mCRC,targeted_immuno,line_1,cea_level,0.65
