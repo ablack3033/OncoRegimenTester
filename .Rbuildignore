@@ -3,3 +3,4 @@
 ^output$
 ^\.git$
 ^\.gitignore$
+^STYLE_GUIDE\.md$

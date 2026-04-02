@@ -9,87 +9,84 @@
 
 #' Sample one item from a weighted vector with optional jitter
 #' @keywords internal
-weighted_sample <- function(items, weights, noise) {
+weightedSample <- function(items, weights, noise) {
   w <- as.numeric(weights)
   if (sum(w) <= 0) {
     return(sample(items, 1))
   }
   w <- w / sum(w)
-  w <- jitter_probabilities(w, noise)
+  w <- jitterProbabilities(w, noise)
   sample(items, size = 1, prob = w)
 }
 
 
 #' Parse an obs_length_bin like "365_730" to a concrete day count
 #' @keywords internal
-parse_obs_length_bin <- function(bin_label) {
-  if (grepl("_plus$", bin_label)) {
-    start <- as.integer(sub("_plus$", "", bin_label))
+parseObsLengthBin <- function(binLabel) {
+  if (grepl("_plus$", binLabel)) {
+    start <- as.integer(sub("_plus$", "", binLabel))
     return(start + sample.int(366, 1) - 1L)
   }
-  parts <- as.integer(strsplit(bin_label, "_")[[1]])
+  parts <- as.integer(strsplit(binLabel, "_")[[1]])
   sample(parts[1]:parts[2], 1)
 }
 
 
 #' Generate synthetic patients
 #'
-#' @param pack A parameter_pack object
-#' @param config A simulator_config object
+#' @param pack A parameterPack object
+#' @param config A simulatorConfig object
 #' @return A data.table of synthetic patients
 #' @export
-generate_patients <- function(pack, config) {
+generatePatients <- function(pack, config) {
   set.seed(config$seed)
 
-  pop <- pack$cohort_population
-  profiles <- pack$treatment_profile_mix
+  pop <- pack$cohortPopulation
+  profiles <- pack$treatmentProfileMix
 
   if (nrow(pop) == 0) stop("No cohort_population rows available", call. = FALSE)
   if (nrow(profiles) == 0) stop("No treatment_profile_mix rows available", call. = FALSE)
 
-  cal_days <- as.integer(config$calendar_end - config$calendar_start)
-  if (cal_days <= 0) stop("calendar_end must be after calendar_start", call. = FALSE)
+  calDays <- as.integer(config$calendarEnd - config$calendarStart)
+  if (calDays <= 0) stop("calendarEnd must be after calendarStart", call. = FALSE)
 
-  patients <- vector("list", config$n_patients)
+  patients <- vector("list", config$nPatients)
 
-  for (pid in seq_len(config$n_patients)) {
-    # Sample demographic stratum
-    demo_idx <- as.integer(weighted_sample(
+  for (pid in seq_len(config$nPatients)) {
+    demoIdx <- as.integer(weightedSample(
       seq_len(nrow(pop)), pop$proportion, config$noise
     ))
-    chosen_demo <- pop[demo_idx]
+    chosenDemo <- pop[demoIdx]
 
-    # Sample treatment profile conditional on age_group and sex
     matching <- profiles[
-      age_group == chosen_demo$age_group & sex == chosen_demo$sex
+      age_group == chosenDemo$age_group & sex == chosenDemo$sex
     ]
     if (nrow(matching) == 0) {
-      # Fallback to all profiles for this cohort
-      matching <- profiles[cohort_id == chosen_demo$cohort_id]
+      matching <- profiles[cohort_id == chosenDemo$cohort_id]
     }
     if (nrow(matching) == 0) {
       stop(sprintf("No treatment profiles for age_group=%s, sex=%s",
-                   chosen_demo$age_group, chosen_demo$sex), call. = FALSE)
+                   chosenDemo$age_group, chosenDemo$sex), call. = FALSE)
     }
 
-    prof_idx <- as.integer(weighted_sample(
+    profIdx <- as.integer(weightedSample(
       seq_len(nrow(matching)), matching$proportion, config$noise
     ))
-    chosen_prof <- matching[prof_idx]
+    chosenProf <- matching[profIdx]
 
-    index_day <- sample.int(cal_days + 1L, 1) - 1L
-    obs_length <- parse_obs_length_bin(chosen_demo$obs_length_bin)
+    indexDay <- sample.int(calDays + 1L, 1) - 1L
+    obsLength <- parseObsLengthBin(chosenDemo$obs_length_bin)
 
     patients[[pid]] <- data.table(
       patient_id = pid,
-      cohort_id = chosen_demo$cohort_id,
-      age_group = chosen_demo$age_group,
-      sex = chosen_demo$sex,
-      obs_length_bin = chosen_demo$obs_length_bin,
-      obs_length_days = obs_length,
-      profile_id = chosen_prof$profile_id,
-      profile_label = chosen_prof$profile_label,
-      index_day = index_day
+      cohort_id = chosenDemo$cohort_id,
+      age_group = chosenDemo$age_group,
+      sex = chosenDemo$sex,
+      obs_length_bin = chosenDemo$obs_length_bin,
+      obs_length_days = obsLength,
+      profile_id = chosenProf$profile_id,
+      profile_label = chosenProf$profile_label,
+      index_day = indexDay
     )
   }
 

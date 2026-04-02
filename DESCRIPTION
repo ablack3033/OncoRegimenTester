@@ -5,7 +5,8 @@ Authors@R: person("Author", "Name", role = c("aut", "cre"), email = "author@exam
 Description: White-box simulator that generates fake but structurally believable
     oncology treatment histories in OMOP-like tables. Designed for method testing,
     algorithm development, and benchmarking regimen detection logic using
-    interpretable CSV parameter packs.
+    interpretable CSV parameter packs. Supports CDMConnector CDM reference
+    objects for direct integration with OHDSI tooling.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
@@ -14,5 +15,11 @@ Depends: R (>= 4.1.0)
 Imports:
     data.table
 Suggests:
-    testthat (>= 3.0.0)
+    testthat (>= 3.0.0),
+    CDMConnector,
+    DBI,
+    duckdb,
+    knitr,
+    rmarkdown
 Config/testthat/edition: 3
+VignetteBuilder: knitr

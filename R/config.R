@@ -10,72 +10,72 @@
 #' This is NOT differential privacy -- it is simulation variability
 #' so that outputs are not perfectly deterministic copies of the parameter tables.
 #'
-#' @param probability_jitter_sd SD on logit scale applied to sampling probabilities
-#' @param duration_jitter_days Max +/- days added to sampled regimen durations
-#' @param cycle_jitter_days Max +/- days shift on admin days within a cycle
-#' @param transition_jitter_sd SD on logit scale for transition probabilities
-#' @param missingness_rate Probability of dropping an individual drug exposure
-#' @return A list with class "noise_config"
+#' @param probabilityJitterSd SD on logit scale applied to sampling probabilities
+#' @param durationJitterDays Max +/- days added to sampled regimen durations
+#' @param cycleJitterDays Max +/- days shift on admin days within a cycle
+#' @param transitionJitterSd SD on logit scale for transition probabilities
+#' @param missingnessRate Probability of dropping an individual drug exposure
+#' @return A list with class "noiseConfig"
 #' @export
-noise_config <- function(probability_jitter_sd = 0,
-                         duration_jitter_days = 0L,
-                         cycle_jitter_days = 0L,
-                         transition_jitter_sd = 0,
-                         missingness_rate = 0) {
+noiseConfig <- function(probabilityJitterSd = 0,
+                        durationJitterDays = 0L,
+                        cycleJitterDays = 0L,
+                        transitionJitterSd = 0,
+                        missingnessRate = 0) {
   cfg <- list(
-    probability_jitter_sd = probability_jitter_sd,
-    duration_jitter_days = as.integer(duration_jitter_days),
-    cycle_jitter_days = as.integer(cycle_jitter_days),
-    transition_jitter_sd = transition_jitter_sd,
-    missingness_rate = missingness_rate
+    probabilityJitterSd = probabilityJitterSd,
+    durationJitterDays = as.integer(durationJitterDays),
+    cycleJitterDays = as.integer(cycleJitterDays),
+    transitionJitterSd = transitionJitterSd,
+    missingnessRate = missingnessRate
   )
-  class(cfg) <- "noise_config"
+  class(cfg) <- "noiseConfig"
   cfg
 }
 
 
 #' Create a simulator configuration
 #'
-#' @param param_dir Directory containing the CSV parameter pack
-#' @param output_dir Directory for generated outputs
+#' @param paramDir Directory containing the CSV parameter pack
+#' @param outputDir Directory for generated outputs
 #' @param seed Master random seed for reproducibility
-#' @param n_patients Number of synthetic patients to generate
-#' @param calendar_start Earliest possible index date (ISO format)
-#' @param calendar_end Latest possible index date (ISO format)
-#' @param noise A noise_config object
-#' @param generate_conditions Whether to generate condition records
-#' @param generate_procedures Whether to generate procedure records
-#' @param generate_measurements Whether to generate measurement records
-#' @param omop_output Whether to render OMOP-like output tables
-#' @param cohort_id If set, restrict to this cohort only
-#' @return A list with class "simulator_config"
+#' @param nPatients Number of synthetic patients to generate
+#' @param calendarStart Earliest possible index date (ISO format)
+#' @param calendarEnd Latest possible index date (ISO format)
+#' @param noise A noiseConfig object
+#' @param generateConditions Whether to generate condition records
+#' @param generateProcedures Whether to generate procedure records
+#' @param generateMeasurements Whether to generate measurement records
+#' @param omopOutput Whether to render OMOP-like output tables
+#' @param cohortId If set, restrict to this cohort only
+#' @return A list with class "simulatorConfig"
 #' @export
-simulator_config <- function(param_dir = "inst/example_params/mCRC",
-                             output_dir = "output",
-                             seed = 42L,
-                             n_patients = 100L,
-                             calendar_start = "2018-01-01",
-                             calendar_end = "2023-12-31",
-                             noise = noise_config(),
-                             generate_conditions = TRUE,
-                             generate_procedures = TRUE,
-                             generate_measurements = TRUE,
-                             omop_output = TRUE,
-                             cohort_id = NULL) {
+simulatorConfig <- function(paramDir = "inst/example_params/mCRC",
+                            outputDir = "output",
+                            seed = 42L,
+                            nPatients = 100L,
+                            calendarStart = "2018-01-01",
+                            calendarEnd = "2023-12-31",
+                            noise = noiseConfig(),
+                            generateConditions = TRUE,
+                            generateProcedures = TRUE,
+                            generateMeasurements = TRUE,
+                            omopOutput = TRUE,
+                            cohortId = NULL) {
   cfg <- list(
-    param_dir = param_dir,
-    output_dir = output_dir,
+    paramDir = paramDir,
+    outputDir = outputDir,
     seed = as.integer(seed),
-    n_patients = as.integer(n_patients),
-    calendar_start = as.Date(calendar_start),
-    calendar_end = as.Date(calendar_end),
+    nPatients = as.integer(nPatients),
+    calendarStart = as.Date(calendarStart),
+    calendarEnd = as.Date(calendarEnd),
     noise = noise,
-    generate_conditions = generate_conditions,
-    generate_procedures = generate_procedures,
-    generate_measurements = generate_measurements,
-    omop_output = omop_output,
-    cohort_id = cohort_id
+    generateConditions = generateConditions,
+    generateProcedures = generateProcedures,
+    generateMeasurements = generateMeasurements,
+    omopOutput = omopOutput,
+    cohortId = cohortId
   )
-  class(cfg) <- "simulator_config"
+  class(cfg) <- "simulatorConfig"
   cfg
 }

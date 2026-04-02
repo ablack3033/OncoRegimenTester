@@ -10,16 +10,16 @@
 
 #' Run the full simulation pipeline
 #'
-#' @param config A simulator_config object. If NULL, uses defaults.
+#' @param config A simulatorConfig object. If NULL, uses defaults.
 #' @return A list with all generated data and validation report
 #' @export
-run_simulation <- function(config = NULL) {
+runSimulation <- function(config = NULL) {
   if (is.null(config)) {
-    config <- simulator_config()
+    config <- simulatorConfig()
   }
 
-  message("Loading parameter pack from: ", config$param_dir)
-  pack <- load_parameter_pack(config$param_dir, cohort_id = config$cohort_id)
+  message("Loading parameter pack from: ", config$paramDir)
+  pack <- loadParameterPack(config$paramDir, cohortId = config$cohortId)
 
   if (length(pack$warnings) > 0) {
     message(sprintf("Parameter pack loaded with %d warnings", length(pack$warnings)))
@@ -30,18 +30,18 @@ run_simulation <- function(config = NULL) {
     message("Parameter pack loaded successfully")
   }
 
-  message(sprintf("Generating %d patients...", config$n_patients))
-  patients <- generate_patients(pack, config)
+  message(sprintf("Generating %d patients...", config$nPatients))
+  patients <- generatePatients(pack, config)
 
   message("Generating therapy (lines, regimens, drug exposures)...")
-  therapy <- generate_therapy(patients, pack, config)
+  therapy <- generateTherapy(patients, pack, config)
 
-  message(sprintf("  Generated %d line plans", nrow(therapy$line_plans)))
-  message(sprintf("  Generated %d drug exposures", nrow(therapy$drug_exposures)))
+  message(sprintf("  Generated %d line plans", nrow(therapy$linePlans)))
+  message(sprintf("  Generated %d drug exposures", nrow(therapy$drugExposures)))
 
   message("Generating supporting events...")
-  supporting <- generate_supporting_events(
-    patients, therapy$line_plans, pack, config
+  supporting <- generateSupportingEvents(
+    patients, therapy$linePlans, pack, config
   )
   message(sprintf("  Conditions: %d, Procedures: %d, Measurements: %d",
                   nrow(supporting$conditions),
@@ -49,17 +49,17 @@ run_simulation <- function(config = NULL) {
                   nrow(supporting$measurements)))
 
   message("Running reference regimen detector...")
-  detected <- detect_regimens(therapy$drug_exposures, pack)
+  detected <- detectRegimens(therapy$drugExposures, pack)
   message(sprintf("  Detected %d episodes, %d lines",
                   nrow(detected$episodes), nrow(detected$lines)))
 
-  if (config$omop_output) {
+  if (config$omopOutput) {
     message("Rendering OMOP-like output tables...")
-    render_omop(patients, therapy, supporting, detected, config)
+    renderOmop(patients, therapy, supporting, detected, config)
   }
 
   message("Running validation...")
-  validation <- validate_output(patients, therapy, pack)
+  validation <- validateOutput(patients, therapy, pack)
 
   message("")
   cat(paste(validation$report, collapse = "\n"), "\n")

@@ -1,0 +1,245 @@
+---
+title: "Full Simulation Example with CDMConnector"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Full Simulation Example with CDMConnector}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+## Introduction
+
+OncoRegimenTester generates synthetic oncology drug exposure data for testing
+regimen detection algorithms. This vignette walks through a full simulation
+and shows how to work with the output alongside a real OMOP CDM dataset
+(the Eunomia GiBleed example from CDMConnector).
+
+The idea: in real-world data you only see drug exposures. You never directly
+observe which regimen a patient is on. Regimen detection algorithms try to
+reconstruct that from the drug-level data. This simulator lets you test those
+algorithms against known ground truth.
+
+## Setup
+
+```{r setup}
+library(OncoRegimenTester)
+library(data.table)
+```
+
+## Step 1: Load and validate parameters
+
+The simulator is driven by CSV parameter files. The included mCRC (metastatic
+colorectal cancer) example defines regimens like FOLFOX, FOLFIRI, CAPOX, and
+pembrolizumab monotherapy.
+
+```{r load-params}
+paramDir <- system.file("example_params", "mCRC", package = "OncoRegimenTester")
+pack <- loadParameterPack(paramDir)
+
+# Check what we loaded
+validation <- validateParameterPack(pack)
+cat(paste(validation$summary, collapse = "\n"))
+```
+
+```{r show-warnings}
+if (length(validation$warnings) > 0) {
+  cat("\nWarnings:\n")
+  cat(paste(validation$warnings, collapse = "\n"))
+} else {
+  cat("\nNo validation warnings.")
+}
+```
+
+## Step 2: Inspect the regimen definitions
+
+Before generating, let's see what regimens we're working with:
+
+```{r regimen-catalog}
+pack$regimenCatalog[, .(regimen_id, regimen_name, regimen_type, is_maintenance)]
+```
+
+And which drugs belong to each regimen:
+
+```{r regimen-drugs}
+pack$regimenDrugMap[, .(regimen_id, drug_feature_id, drug_role, required_flag)]
+```
+
+## Step 3: Generate synthetic data
+
+Now generate 200 patients with some realistic noise:
+
+```{r generate}
+config <- simulatorConfig(
+  paramDir = paramDir,
+  outputDir = tempfile("oncoregimen_"),
+  nPatients = 200L,
+  seed = 42L,
+  noise = noiseConfig(
+    probabilityJitterSd = 0.1,
+    durationJitterDays = 3L,
+    cycleJitterDays = 1L,
+    missingnessRate = 0.03
+  )
+)
+
+result <- runSimulation(config)
+```
+
+## Step 4: Examine the generated data
+
+### Patients
+
+```{r patients}
+head(result$patients)
+
+# Profile distribution
+result$patients[, .N, by = profile_id]
+```
+
+### Drug exposures
+
+The drug exposures are the primary output -- this is what a regimen detection
+algorithm would see:
+
+```{r drug-exposures}
+de <- result$therapy$drugExposures
+cat(sprintf("Total drug exposures: %d\n", nrow(de)))
+cat(sprintf("Unique drugs: %d\n", length(unique(de$drug_feature_id))))
+
+# Exposures per drug
+de[, .N, by = drug_feature_id][order(-N)]
+```
+
+### Ground truth vs detected regimens
+
+The ground truth is what the simulator intended:
+
+```{r ground-truth}
+result$therapy$groundTruthEpisodes[1:10, ]
+```
+
+The detected regimens are what the reference detector recovered from the
+drug exposures alone:
+
+```{r detected}
+result$detected$episodes[1:10, ]
+```
+
+### Compare ground truth to detected
+
+```{r comparison}
+gtEpisodes <- nrow(result$therapy$groundTruthEpisodes)
+detEpisodes <- nrow(result$detected$episodes)
+
+cat(sprintf("Ground truth episodes: %d\n", gtEpisodes))
+cat(sprintf("Detected episodes: %d\n", detEpisodes))
+
+# How often does the detector correctly identify the regimen?
+gt <- result$therapy$groundTruthEpisodes
+det <- result$detected$episodes
+
+# Merge on patient_id and overlapping time windows
+gt[, gt_key := paste(patient_id, regimen_id, sep = "_")]
+det[, det_key := paste(patient_id, detected_regimen_id, sep = "_")]
+
+matchRate <- length(intersect(gt$gt_key, det$det_key)) / nrow(gt)
+cat(sprintf("Approximate regimen match rate: %.1f%%\n", matchRate * 100))
+```
+
+## Step 5: Working with CDMConnector (Eunomia GiBleed)
+
+If you have CDMConnector installed, you can compare the structure of the
+synthetic data with a real OMOP CDM dataset.
+
+```{r eunomia-setup, eval = requireNamespace("CDMConnector", quietly = TRUE) && requireNamespace("duckdb", quietly = TRUE)}
+library(CDMConnector)
+library(DBI)
+library(duckdb)
+
+# Load the Eunomia GiBleed dataset
+con <- dbConnect(duckdb(), eunomiaDir("GiBleed"))
+cdm <- cdmFromCon(con, cdmSchema = "main", writeSchema = "main")
+
+# Look at real drug exposures for comparison
+realDe <- as.data.table(head(cdm$drug_exposure, 1000))
+cat(sprintf("Eunomia drug_exposure columns: %s\n",
+            paste(names(realDe), collapse = ", ")))
+cat(sprintf("Eunomia drug_exposure rows (sample): %d\n", nrow(realDe)))
+```
+
+```{r eunomia-compare, eval = requireNamespace("CDMConnector", quietly = TRUE) && requireNamespace("duckdb", quietly = TRUE)}
+# The synthetic data has the same structural columns
+syntheticDe <- result$therapy$drugExposures
+cat(sprintf("\nSynthetic drug_exposure columns: %s\n",
+            paste(names(syntheticDe), collapse = ", ")))
+
+# Key difference: synthetic data uses drug_feature_id (grouped concept)
+# instead of individual drug_concept_id values. This is by design --
+# the simulator works at the feature level for interpretability.
+```
+
+### Write synthetic data to a CDM
+
+You can write OncoRegimenTester output directly into a CDMConnector CDM:
+
+```{r write-to-cdm, eval = requireNamespace("CDMConnector", quietly = TRUE) && requireNamespace("duckdb", quietly = TRUE)}
+# Create a fresh in-memory database for synthetic data
+synCon <- dbConnect(duckdb())
+
+# Write the OMOP tables
+omopTables <- renderOmop(
+  result$patients, result$therapy, result$supporting,
+  result$detected, result$config
+)
+
+# Write person and drug_exposure to the database
+dbWriteTable(synCon, "person", as.data.frame(omopTables$person))
+dbWriteTable(synCon, "drug_exposure", as.data.frame(omopTables$drug_exposure))
+dbWriteTable(synCon, "observation_period", as.data.frame(omopTables$observation_period))
+
+cat("Synthetic OMOP tables written to DuckDB.\n")
+
+# Query it like a normal CDM
+syntheticPersonCount <- dbGetQuery(synCon, "SELECT COUNT(*) AS n FROM person")
+cat(sprintf("Synthetic person count: %d\n", syntheticPersonCount$n))
+
+syntheticDeCount <- dbGetQuery(synCon, "SELECT COUNT(*) AS n FROM drug_exposure")
+cat(sprintf("Synthetic drug_exposure count: %d\n", syntheticDeCount$n))
+
+dbDisconnect(synCon, shutdown = TRUE)
+```
+
+```{r cleanup, eval = requireNamespace("CDMConnector", quietly = TRUE) && requireNamespace("duckdb", quietly = TRUE)}
+dbDisconnect(con, shutdown = TRUE)
+```
+
+## Step 6: Validation report
+
+The validation report compares observed frequencies to parameter targets:
+
+```{r validation}
+cat(paste(result$validation$report, collapse = "\n"))
+```
+
+## Summary
+
+This vignette demonstrated:
+
+1. **Loading parameter CSVs** that define regimen templates, drug schedules,
+   and patient profiles
+2. **Generating synthetic drug exposures** with realistic timing, jitter,
+   and missingness
+3. **Comparing ground truth to detected regimens** -- the core evaluation loop
+4. **Integrating with CDMConnector** to work alongside real OMOP CDM datasets
+5. **Validating** that generated data matches parameter targets
+
+The simulator's purpose is to create test data for regimen detection. The drug
+exposures are intentionally messy because real data is messy. A good regimen
+detection algorithm should recover the ground truth regimens despite the noise.

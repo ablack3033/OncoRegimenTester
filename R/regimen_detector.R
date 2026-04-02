@@ -10,7 +10,6 @@
 
 #' @import data.table
 
-# Default gap (days) before starting a new episode
 DEFAULT_OVERLAP_WINDOW <- 28L
 
 
@@ -18,24 +17,24 @@ DEFAULT_OVERLAP_WINDOW <- 28L
 #'
 #' Each regimen's required antineoplastic drugs form its signature.
 #' @keywords internal
-build_regimen_signatures <- function(pack) {
-  drug_cat <- setNames(
-    pack$drug_feature_catalog$is_antineoplastic,
-    pack$drug_feature_catalog$drug_feature_id
+buildRegimenSignatures <- function(pack) {
+  drugCat <- setNames(
+    pack$drugFeatureCatalog$is_antineoplastic,
+    pack$drugFeatureCatalog$drug_feature_id
   )
 
   sigs <- list()
-  for (i in seq_len(nrow(pack$regimen_catalog))) {
-    reg_id <- pack$regimen_catalog$regimen_id[i]
-    drugs <- pack$regimen_drug_map[pack$regimen_drug_map$regimen_id == reg_id, ]
-    sig_drugs <- drugs[
+  for (i in seq_len(nrow(pack$regimenCatalog))) {
+    regId <- pack$regimenCatalog$regimen_id[i]
+    drugs <- pack$regimenDrugMap[pack$regimenDrugMap$regimen_id == regId, ]
+    sigDrugs <- drugs[
       drugs$required_flag == TRUE &
-      drugs$drug_feature_id %in% names(drug_cat) &
-      drug_cat[drugs$drug_feature_id] == TRUE,
+      drugs$drug_feature_id %in% names(drugCat) &
+      drugCat[drugs$drug_feature_id] == TRUE,
       "drug_feature_id"
     ][[1]]
-    if (length(sig_drugs) > 0) {
-      sigs[[reg_id]] <- sort(sig_drugs)
+    if (length(sigDrugs) > 0) {
+      sigs[[regId]] <- sort(sigDrugs)
     }
   }
   sigs
@@ -44,21 +43,21 @@ build_regimen_signatures <- function(pack) {
 
 #' Get drug IDs that should be ignored for detection
 #' @keywords internal
-get_ignorable_drugs <- function(pack) {
+getIgnorableDrugs <- function(pack) {
   ignorable <- character(0)
-  if (nrow(pack$supportive_drug_rules) > 0) {
+  if (nrow(pack$supportiveDrugRules) > 0) {
     ignorable <- union(
       ignorable,
-      pack$supportive_drug_rules[
-        pack$supportive_drug_rules$ignore_for_regimen_detection_flag == TRUE,
+      pack$supportiveDrugRules[
+        pack$supportiveDrugRules$ignore_for_regimen_detection_flag == TRUE,
         drug_feature_id
       ]
     )
   }
   ignorable <- union(
     ignorable,
-    pack$drug_feature_catalog[
-      pack$drug_feature_catalog$is_supportive == TRUE,
+    pack$drugFeatureCatalog[
+      pack$drugFeatureCatalog$is_supportive == TRUE,
       drug_feature_id
     ]
   )
@@ -69,131 +68,127 @@ get_ignorable_drugs <- function(pack) {
 #' Detect regimen episodes from raw drug exposures
 #'
 #' @param exposures data.table of drug exposures
-#' @param pack parameter_pack
-#' @param overlap_window Days gap that starts a new episode
+#' @param pack parameterPack
+#' @param overlapWindow Days gap that starts a new episode
 #' @return A list with `episodes` and `lines` data.tables
 #' @export
-detect_regimens <- function(exposures, pack,
-                            overlap_window = DEFAULT_OVERLAP_WINDOW) {
-  empty_episodes <- data.table(
+detectRegimens <- function(exposures, pack,
+                           overlapWindow = DEFAULT_OVERLAP_WINDOW) {
+  emptyEpisodes <- data.table(
     patient_id = integer(0), episode_id = integer(0),
     episode_start_day = integer(0), episode_end_day = integer(0),
     detected_regimen_id = character(0), detected_regimen_name = character(0),
     line_number = integer(0), drug_set_signature = character(0)
   )
-  empty_lines <- data.table(
+  emptyLines <- data.table(
     patient_id = integer(0), line_number = integer(0),
     line_start_day = integer(0), line_end_day = integer(0),
     regimen_sequence_summary = character(0)
   )
 
   if (nrow(exposures) == 0) {
-    return(list(episodes = empty_episodes, lines = empty_lines))
+    return(list(episodes = emptyEpisodes, lines = emptyLines))
   }
 
-  ignorable <- get_ignorable_drugs(pack)
-  regimen_sigs <- build_regimen_signatures(pack)
-  regimen_names <- setNames(
-    pack$regimen_catalog$regimen_name,
-    pack$regimen_catalog$regimen_id
+  ignorable <- getIgnorableDrugs(pack)
+  regimenSigs <- buildRegimenSignatures(pack)
+  regimenNames <- setNames(
+    pack$regimenCatalog$regimen_name,
+    pack$regimenCatalog$regimen_id
   )
 
-  # Process per patient
-  patient_ids <- unique(exposures$patient_id)
-  all_episodes <- list()
-  all_lines <- list()
+  patientIds <- unique(exposures$patient_id)
+  allEpisodes <- list()
+  allLines <- list()
 
-  for (pid in patient_ids) {
-    pat_exp <- exposures[
+  for (pid in patientIds) {
+    patExp <- exposures[
       exposures$patient_id == pid &
       !(exposures$drug_feature_id %in% ignorable),
     ]
-    pat_exp <- pat_exp[order(pat_exp$drug_exposure_start_day), ]
+    patExp <- patExp[order(patExp$drug_exposure_start_day), ]
 
-    if (nrow(pat_exp) == 0) next
+    if (nrow(patExp) == 0) next
 
     # Group into windows by gaps
     windows <- list()
-    current_window <- list(pat_exp[1, ])
-    for (k in seq_len(nrow(pat_exp))[-1]) {
-      last_end <- max(sapply(current_window, function(x) x$drug_exposure_end_day))
-      if (pat_exp$drug_exposure_start_day[k] - last_end > overlap_window) {
-        windows[[length(windows) + 1L]] <- rbindlist(current_window)
-        current_window <- list(pat_exp[k, ])
+    currentWindow <- list(patExp[1, ])
+    for (k in seq_len(nrow(patExp))[-1]) {
+      lastEnd <- max(sapply(currentWindow, function(x) x$drug_exposure_end_day))
+      if (patExp$drug_exposure_start_day[k] - lastEnd > overlapWindow) {
+        windows[[length(windows) + 1L]] <- rbindlist(currentWindow)
+        currentWindow <- list(patExp[k, ])
       } else {
-        current_window[[length(current_window) + 1L]] <- pat_exp[k, ]
+        currentWindow[[length(currentWindow) + 1L]] <- patExp[k, ]
       }
     }
-    windows[[length(windows) + 1L]] <- rbindlist(current_window)
+    windows[[length(windows) + 1L]] <- rbindlist(currentWindow)
 
-    episode_id <- 0L
-    line_number <- 1L
-    prev_drug_set <- character(0)
-    ep_list <- list()
+    episodeId <- 0L
+    lineNumber <- 1L
+    prevDrugSet <- character(0)
+    epList <- list()
 
     for (wi in seq_along(windows)) {
       w <- windows[[wi]]
-      drug_set <- sort(unique(w$drug_feature_id))
-      start_day <- min(w$drug_exposure_start_day)
-      end_day <- max(w$drug_exposure_end_day)
+      drugSet <- sort(unique(w$drug_feature_id))
+      startDay <- min(w$drug_exposure_start_day)
+      endDay <- max(w$drug_exposure_end_day)
 
-      # Match against regimen signatures
-      detected_id <- "unknown"
-      detected_name <- "Unknown"
-      for (reg_id in names(regimen_sigs)) {
-        sig <- regimen_sigs[[reg_id]]
-        if (all(sig %in% drug_set)) {
-          detected_id <- reg_id
-          detected_name <- ifelse(
-            reg_id %in% names(regimen_names),
-            regimen_names[reg_id], reg_id
+      detectedId <- "unknown"
+      detectedName <- "Unknown"
+      for (regId in names(regimenSigs)) {
+        sig <- regimenSigs[[regId]]
+        if (all(sig %in% drugSet)) {
+          detectedId <- regId
+          detectedName <- ifelse(
+            regId %in% names(regimenNames),
+            regimenNames[regId], regId
           )
           break
         }
       }
 
-      # Line advancement: if drug set changes significantly
-      if (wi > 1 && length(prev_drug_set) > 0) {
-        overlap_count <- length(intersect(drug_set, prev_drug_set))
-        if (overlap_count < length(prev_drug_set) * 0.5) {
-          line_number <- line_number + 1L
+      if (wi > 1 && length(prevDrugSet) > 0) {
+        overlapCount <- length(intersect(drugSet, prevDrugSet))
+        if (overlapCount < length(prevDrugSet) * 0.5) {
+          lineNumber <- lineNumber + 1L
         }
       }
-      prev_drug_set <- drug_set
+      prevDrugSet <- drugSet
 
-      episode_id <- episode_id + 1L
-      ep_list[[episode_id]] <- data.table(
+      episodeId <- episodeId + 1L
+      epList[[episodeId]] <- data.table(
         patient_id = pid,
-        episode_id = episode_id,
-        episode_start_day = start_day,
-        episode_end_day = end_day,
-        detected_regimen_id = detected_id,
-        detected_regimen_name = detected_name,
-        line_number = line_number,
-        drug_set_signature = paste(drug_set, collapse = "+")
+        episode_id = episodeId,
+        episode_start_day = startDay,
+        episode_end_day = endDay,
+        detected_regimen_id = detectedId,
+        detected_regimen_name = detectedName,
+        line_number = lineNumber,
+        drug_set_signature = paste(drugSet, collapse = "+")
       )
     }
 
-    if (length(ep_list) > 0) {
-      episodes_dt <- rbindlist(ep_list)
-      all_episodes[[length(all_episodes) + 1L]] <- episodes_dt
+    if (length(epList) > 0) {
+      episodesDt <- rbindlist(epList)
+      allEpisodes[[length(allEpisodes) + 1L]] <- episodesDt
 
-      # Derive lines
-      for (ln in unique(episodes_dt$line_number)) {
-        ln_eps <- episodes_dt[episodes_dt$line_number == ln, ]
-        all_lines[[length(all_lines) + 1L]] <- data.table(
+      for (ln in unique(episodesDt$line_number)) {
+        lnEps <- episodesDt[episodesDt$line_number == ln, ]
+        allLines[[length(allLines) + 1L]] <- data.table(
           patient_id = pid,
           line_number = ln,
-          line_start_day = min(ln_eps$episode_start_day),
-          line_end_day = max(ln_eps$episode_end_day),
-          regimen_sequence_summary = paste(ln_eps$detected_regimen_name, collapse = " -> ")
+          line_start_day = min(lnEps$episode_start_day),
+          line_end_day = max(lnEps$episode_end_day),
+          regimen_sequence_summary = paste(lnEps$detected_regimen_name, collapse = " -> ")
         )
       }
     }
   }
 
   list(
-    episodes = if (length(all_episodes) > 0) rbindlist(all_episodes) else empty_episodes,
-    lines = if (length(all_lines) > 0) rbindlist(all_lines) else empty_lines
+    episodes = if (length(allEpisodes) > 0) rbindlist(allEpisodes) else emptyEpisodes,
+    lines = if (length(allLines) > 0) rbindlist(allLines) else emptyLines
   )
 }

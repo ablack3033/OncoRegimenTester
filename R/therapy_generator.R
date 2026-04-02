@@ -15,21 +15,21 @@
 
 #' Parse a duration_bin like "29_84" to a concrete day count
 #' @keywords internal
-parse_duration_bin <- function(bin_label, noise) {
-  if (grepl("_plus$", bin_label)) {
-    start <- as.integer(sub("_plus$", "", bin_label))
+parseDurationBin <- function(binLabel, noise) {
+  if (grepl("_plus$", binLabel)) {
+    start <- as.integer(sub("_plus$", "", binLabel))
     base <- start + sample.int(180, 1) - 1L
   } else {
-    parts <- as.integer(strsplit(bin_label, "_")[[1]])
+    parts <- as.integer(strsplit(binLabel, "_")[[1]])
     base <- sample(parts[1]:parts[2], 1)
   }
-  jitter_duration(base, noise)
+  jitterDuration(base, noise)
 }
 
 
 #' Parse comma-separated admin_day_pattern into 0-indexed offsets
 #' @keywords internal
-parse_admin_day_pattern <- function(pattern) {
+parseAdminDayPattern <- function(pattern) {
   # Days are 1-indexed in CSV, convert to 0-indexed
   as.integer(trimws(strsplit(pattern, ",")[[1]])) - 1L
 }
@@ -37,137 +37,135 @@ parse_admin_day_pattern <- function(pattern) {
 
 #' Sample a starting regimen for a given line number
 #' @keywords internal
-sample_regimen_for_line <- function(pack, cohort_id, profile_id, line_number, noise) {
-  cid <- cohort_id
-  pid <- profile_id
-  ln <- line_number
-  candidates <- pack$profile_regimen_start[
-    pack$profile_regimen_start$cohort_id == cid &
-    pack$profile_regimen_start$profile_id == pid &
-    pack$profile_regimen_start$line_number == ln,
+sampleRegimenForLine <- function(pack, cohortId, profileId, lineNumber, noise) {
+  cid <- cohortId
+  pid <- profileId
+  ln <- lineNumber
+  candidates <- pack$profileRegimenStart[
+    pack$profileRegimenStart$cohort_id == cid &
+    pack$profileRegimenStart$profile_id == pid &
+    pack$profileRegimenStart$line_number == ln,
   ]
   if (nrow(candidates) == 0) return(NULL)
-  weighted_sample(candidates$regimen_id, candidates$probability, noise)
+  weightedSample(candidates$regimen_id, candidates$probability, noise)
 }
 
 
 #' Sample a regimen duration in days
 #' @keywords internal
-sample_duration <- function(pack, cohort_id, profile_id, regimen_id, noise) {
-  cid <- cohort_id; pid <- profile_id; rid <- regimen_id
-  candidates <- pack$regimen_duration[
-    pack$regimen_duration$cohort_id == cid &
-    pack$regimen_duration$profile_id == pid &
-    pack$regimen_duration$regimen_id == rid,
+sampleDuration <- function(pack, cohortId, profileId, regimenId, noise) {
+  cid <- cohortId; pid <- profileId; rid <- regimenId
+  candidates <- pack$regimenDuration[
+    pack$regimenDuration$cohort_id == cid &
+    pack$regimenDuration$profile_id == pid &
+    pack$regimenDuration$regimen_id == rid,
   ]
   if (nrow(candidates) == 0) {
-    # Fallback: any duration row for this regimen
-    candidates <- pack$regimen_duration[pack$regimen_duration$regimen_id == rid, ]
+    candidates <- pack$regimenDuration[pack$regimenDuration$regimen_id == rid, ]
   }
   if (nrow(candidates) == 0) {
-    return(sample(28:168, 1))  # default fallback
+    return(sample(28:168, 1))
   }
-  chosen_bin <- weighted_sample(candidates$duration_bin, candidates$probability, noise)
-  parse_duration_bin(chosen_bin, noise)
+  chosenBin <- weightedSample(candidates$duration_bin, candidates$probability, noise)
+  parseDurationBin(chosenBin, noise)
 }
 
 
 #' Sample a transition from current regimen
-#' @return Named list with transition_type and to_regimen_id
+#' @return Named list with transitionType and toRegimenId
 #' @keywords internal
-sample_transition <- function(pack, cohort_id, profile_id, from_regimen_id, noise) {
-  cid <- cohort_id; pid <- profile_id; frid <- from_regimen_id
-  candidates <- pack$regimen_transition[
-    pack$regimen_transition$cohort_id == cid &
-    pack$regimen_transition$profile_id == pid &
-    pack$regimen_transition$from_regimen_id == frid,
+sampleTransition <- function(pack, cohortId, profileId, fromRegimenId, noise) {
+  cid <- cohortId; pid <- profileId; frid <- fromRegimenId
+  candidates <- pack$regimenTransition[
+    pack$regimenTransition$cohort_id == cid &
+    pack$regimenTransition$profile_id == pid &
+    pack$regimenTransition$from_regimen_id == frid,
   ]
   if (nrow(candidates) == 0) {
-    return(list(transition_type = "discontinue", to_regimen_id = ""))
+    return(list(transitionType = "discontinue", toRegimenId = ""))
   }
   w <- as.numeric(candidates$probability)
   w <- w / sum(w)
-  w <- jitter_probabilities(w, noise)
+  w <- jitterProbabilities(w, noise)
   idx <- sample.int(nrow(candidates), 1, prob = w)
   list(
-    transition_type = candidates$transition_type[idx],
-    to_regimen_id = candidates$to_regimen_id[idx]
+    transitionType = candidates$transition_type[idx],
+    toRegimenId = candidates$to_regimen_id[idx]
   )
 }
 
 
 #' Generate therapy plans and drug exposures for all patients
 #'
-#' @param patients data.table from generate_patients
-#' @param pack parameter_pack
-#' @param config simulator_config
-#' @return A list with elements: line_plans, drug_exposures, ground_truth_episodes
+#' @param patients data.table from generatePatients
+#' @param pack parameterPack
+#' @param config simulatorConfig
+#' @return A list with elements: linePlans, drugExposures, groundTruthEpisodes
 #' @export
-generate_therapy <- function(patients, pack, config) {
-  set.seed(config$seed + 1L)  # offset seed for therapy generation
+generateTherapy <- function(patients, pack, config) {
+  set.seed(config$seed + 1L)
 
-  all_lines <- vector("list", nrow(patients))
-  all_exposures <- vector("list", nrow(patients))
-  all_episodes <- vector("list", nrow(patients))
+  allLines <- vector("list", nrow(patients))
+  allExposures <- vector("list", nrow(patients))
+  allEpisodes <- vector("list", nrow(patients))
 
   for (i in seq_len(nrow(patients))) {
     pat <- patients[i]
 
-    lines <- generate_line_plans_for_patient(pat, pack, config)
-    exposures <- generate_drug_exposures_for_patient(pat, lines, pack, config)
-    episodes <- build_ground_truth_episodes(pat, lines, pack)
+    lines <- generateLinePlansForPatient(pat, pack, config)
+    exposures <- generateDrugExposuresForPatient(pat, lines, pack, config)
+    episodes <- buildGroundTruthEpisodes(pat, lines, pack)
 
-    all_lines[[i]] <- lines
-    all_exposures[[i]] <- exposures
-    all_episodes[[i]] <- episodes
+    allLines[[i]] <- lines
+    allExposures[[i]] <- exposures
+    allEpisodes[[i]] <- episodes
   }
 
   list(
-    line_plans = rbindlist(all_lines),
-    drug_exposures = rbindlist(all_exposures),
-    ground_truth_episodes = rbindlist(all_episodes)
+    linePlans = rbindlist(allLines),
+    drugExposures = rbindlist(allExposures),
+    groundTruthEpisodes = rbindlist(allEpisodes)
   )
 }
 
 
 #' Generate line plans for one patient
 #' @keywords internal
-generate_line_plans_for_patient <- function(pat, pack, config) {
+generateLinePlansForPatient <- function(pat, pack, config) {
   lines <- list()
-  current_day <- 0L
-  max_lines <- 4L
+  currentDay <- 0L
+  maxLines <- 4L
 
-  for (line_num in seq_len(max_lines)) {
-    regimen_id <- sample_regimen_for_line(
-      pack, pat$cohort_id, pat$profile_id, line_num, config$noise
+  for (lineNum in seq_len(maxLines)) {
+    regimenId <- sampleRegimenForLine(
+      pack, pat$cohort_id, pat$profile_id, lineNum, config$noise
     )
-    if (is.null(regimen_id)) break
+    if (is.null(regimenId)) break
 
-    duration <- sample_duration(
-      pack, pat$cohort_id, pat$profile_id, regimen_id, config$noise
-    )
-
-    line_start <- current_day
-    line_end <- current_day + duration
-
-    transition <- sample_transition(
-      pack, pat$cohort_id, pat$profile_id, regimen_id, config$noise
+    duration <- sampleDuration(
+      pack, pat$cohort_id, pat$profile_id, regimenId, config$noise
     )
 
-    lines[[line_num]] <- data.table(
+    lineStart <- currentDay
+    lineEnd <- currentDay + duration
+
+    transition <- sampleTransition(
+      pack, pat$cohort_id, pat$profile_id, regimenId, config$noise
+    )
+
+    lines[[lineNum]] <- data.table(
       patient_id = pat$patient_id,
-      line_number = line_num,
-      regimen_id = regimen_id,
-      line_start_day = line_start,
-      line_end_day = line_end,
-      transition_type = transition$transition_type
+      line_number = lineNum,
+      regimen_id = regimenId,
+      line_start_day = lineStart,
+      line_end_day = lineEnd,
+      transition_type = transition$transitionType
     )
 
-    if (transition$transition_type == "discontinue") break
+    if (transition$transitionType == "discontinue") break
 
-    # Gap between lines (7-28 days)
     gap <- sample(7L:28L, 1)
-    current_day <- line_end + gap
+    currentDay <- lineEnd + gap
   }
 
   if (length(lines) == 0) {
@@ -184,17 +182,16 @@ generate_line_plans_for_patient <- function(pat, pack, config) {
 
 #' Get active drugs for a regimen after applying modifications
 #' @keywords internal
-get_active_drugs <- function(pack, regimen_id, pat) {
-  rid <- regimen_id
-  base_drugs <- pack$regimen_drug_map[pack$regimen_drug_map$regimen_id == rid, ]
-  active_ids <- base_drugs$drug_feature_id
+getActiveDrugs <- function(pack, regimenId, pat) {
+  rid <- regimenId
+  baseDrugs <- pack$regimenDrugMap[pack$regimenDrugMap$regimen_id == rid, ]
+  activeIds <- baseDrugs$drug_feature_id
 
-  # Apply modification rules
   cid <- pat$cohort_id; pid <- pat$profile_id
-  mods <- pack$drug_drop_add_rules[
-    pack$drug_drop_add_rules$regimen_id == rid &
-    pack$drug_drop_add_rules$cohort_id == cid &
-    pack$drug_drop_add_rules$profile_id == pid,
+  mods <- pack$drugDropAddRules[
+    pack$drugDropAddRules$regimen_id == rid &
+    pack$drugDropAddRules$cohort_id == cid &
+    pack$drugDropAddRules$profile_id == pid,
   ]
 
   if (nrow(mods) > 0) {
@@ -202,37 +199,41 @@ get_active_drugs <- function(pack, regimen_id, pat) {
       mod <- mods[j]
       if (runif(1) < mod$probability) {
         if (mod$modification_type == "drop") {
-          active_ids <- setdiff(active_ids, mod$drug_feature_id)
+          activeIds <- setdiff(activeIds, mod$drug_feature_id)
         } else if (mod$modification_type == "add") {
-          active_ids <- union(active_ids, mod$drug_feature_id)
+          activeIds <- union(activeIds, mod$drug_feature_id)
         } else if (mod$modification_type == "substitute") {
-          # Drop first non-anchor and add substitute
-          non_anchors <- base_drugs[
-            drug_role != "anchor" & drug_feature_id %in% active_ids,
+          nonAnchors <- baseDrugs[
+            drug_role != "anchor" & drug_feature_id %in% activeIds,
             drug_feature_id
           ]
-          if (length(non_anchors) > 0) {
-            active_ids <- setdiff(active_ids, non_anchors[1])
+          if (length(nonAnchors) > 0) {
+            activeIds <- setdiff(activeIds, nonAnchors[1])
           }
-          active_ids <- union(active_ids, mod$drug_feature_id)
+          activeIds <- union(activeIds, mod$drug_feature_id)
         }
       }
     }
   }
 
-  base_drugs[base_drugs$drug_feature_id %in% active_ids, ]
+  baseDrugs[baseDrugs$drug_feature_id %in% activeIds, ]
 }
 
 
 #' Generate drug exposures for one patient from their line plans
+#' @param pat Single-row data.table for one patient
+#' @param linePlans data.table of line plans for this patient
+#' @param pack parameterPack
+#' @param config simulatorConfig
+#' @return data.table of drug exposures
 #' @export
-generate_drug_exposures <- function(pat, line_plans, pack, config) {
-  generate_drug_exposures_for_patient(pat, line_plans, pack, config)
+generateDrugExposures <- function(pat, linePlans, pack, config) {
+  generateDrugExposuresForPatient(pat, linePlans, pack, config)
 }
 
 #' @keywords internal
-generate_drug_exposures_for_patient <- function(pat, line_plans, pack, config) {
-  if (nrow(line_plans) == 0) {
+generateDrugExposuresForPatient <- function(pat, linePlans, pack, config) {
+  if (nrow(linePlans) == 0) {
     return(data.table(
       patient_id = integer(0), drug_feature_id = character(0),
       drug_exposure_start_day = integer(0), drug_exposure_end_day = integer(0),
@@ -242,35 +243,33 @@ generate_drug_exposures_for_patient <- function(pat, line_plans, pack, config) {
   }
 
   exposures <- list()
-  exp_idx <- 0L
+  expIdx <- 0L
 
-  for (li in seq_len(nrow(line_plans))) {
-    line <- line_plans[li]
-    active_drugs <- get_active_drugs(pack, line$regimen_id, pat)
+  for (li in seq_len(nrow(linePlans))) {
+    line <- linePlans[li]
+    activeDrugs <- getActiveDrugs(pack, line$regimen_id, pat)
 
-    # Build schedule lookup for this regimen
     rid <- line$regimen_id
-    schedules <- pack$drug_schedule[pack$drug_schedule$regimen_id == rid, ]
-    sched_map <- setNames(
+    schedules <- pack$drugSchedule[pack$drugSchedule$regimen_id == rid, ]
+    schedMap <- setNames(
       split(schedules, seq_len(nrow(schedules))),
       schedules$drug_feature_id
     )
 
-    line_duration <- line$line_end_day - line$line_start_day
+    lineDuration <- line$line_end_day - line$line_start_day
 
-    for (di in seq_len(nrow(active_drugs))) {
-      drug_id <- active_drugs$drug_feature_id[di]
-      sched <- sched_map[[drug_id]]
+    for (di in seq_len(nrow(activeDrugs))) {
+      drugId <- activeDrugs$drug_feature_id[di]
+      sched <- schedMap[[drugId]]
       if (is.null(sched) || nrow(sched) == 0) next
-      sched <- sched[1, ]  # take first if duplicates
+      sched <- sched[1, ]
 
       if (sched$exposure_type == "continuous") {
-        # Continuous oral: one long exposure spanning the regimen
-        if (!should_drop_exposure(config$noise)) {
-          exp_idx <- exp_idx + 1L
-          exposures[[exp_idx]] <- data.table(
+        if (!shouldDropExposure(config$noise)) {
+          expIdx <- expIdx + 1L
+          exposures[[expIdx]] <- data.table(
             patient_id = pat$patient_id,
-            drug_feature_id = drug_id,
+            drug_feature_id = drugId,
             drug_exposure_start_day = line$line_start_day,
             drug_exposure_end_day = line$line_end_day,
             regimen_id = line$regimen_id,
@@ -279,62 +278,58 @@ generate_drug_exposures_for_patient <- function(pat, line_plans, pack, config) {
           )
         }
       } else {
-        # Cyclic administration
-        admin_days <- parse_admin_day_pattern(sched$admin_day_pattern)
-        cycle_len <- sched$cycle_length_days
+        adminDays <- parseAdminDayPattern(sched$admin_day_pattern)
+        cycleLen <- sched$cycle_length_days
 
-        cycle_start <- 0L
-        while (cycle_start < line_duration) {
-          for (admin_day in admin_days) {
-            actual_day <- cycle_start + admin_day
-            actual_day <- jitter_cycle_day(actual_day, config$noise)
+        cycleStart <- 0L
+        while (cycleStart < lineDuration) {
+          for (adminDay in adminDays) {
+            actualDay <- cycleStart + adminDay
+            actualDay <- jitterCycleDay(actualDay, config$noise)
 
-            if (actual_day >= line_duration) next
+            if (actualDay >= lineDuration) next
 
-            abs_start <- line$line_start_day + actual_day
+            absStart <- line$line_start_day + actualDay
+            expLen <- if (sched$exposure_type == "infusion") 2L else 1L
 
-            # IV drugs ~1 day, infusions ~2 days
-            exp_len <- if (sched$exposure_type == "infusion") 2L else 1L
+            if (shouldDropExposure(config$noise)) next
 
-            if (should_drop_exposure(config$noise)) next
-
-            exp_idx <- exp_idx + 1L
-            exposures[[exp_idx]] <- data.table(
+            expIdx <- expIdx + 1L
+            exposures[[expIdx]] <- data.table(
               patient_id = pat$patient_id,
-              drug_feature_id = drug_id,
-              drug_exposure_start_day = abs_start,
-              drug_exposure_end_day = abs_start + exp_len,
+              drug_feature_id = drugId,
+              drug_exposure_start_day = absStart,
+              drug_exposure_end_day = absStart + expLen,
               regimen_id = line$regimen_id,
               line_number = line$line_number,
               is_supportive = FALSE
             )
           }
-          cycle_start <- cycle_start + cycle_len
+          cycleStart <- cycleStart + cycleLen
         }
       }
     }
 
-    # Supportive drugs
-    supp_rules <- pack$supportive_drug_rules[
-      pack$supportive_drug_rules$regimen_id == rid,
+    suppRules <- pack$supportiveDrugRules[
+      pack$supportiveDrugRules$regimen_id == rid,
     ]
-    if (nrow(supp_rules) > 0) {
-      for (si in seq_len(nrow(supp_rules))) {
-        rule <- supp_rules[si]
+    if (nrow(suppRules) > 0) {
+      for (si in seq_len(nrow(suppRules))) {
+        rule <- suppRules[si]
         if (runif(1) < rule$probability) {
-          n_admin <- max(1L, sample.int(max(2L, line_duration %/% 14L + 1L), 1))
-          for (ai in seq_len(n_admin)) {
-            day_offset <- sample.int(max(1L, line_duration), 1) - 1L
-            abs_day <- line$line_start_day + day_offset
+          nAdmin <- max(1L, sample.int(max(2L, lineDuration %/% 14L + 1L), 1))
+          for (ai in seq_len(nAdmin)) {
+            dayOffset <- sample.int(max(1L, lineDuration), 1) - 1L
+            absDay <- line$line_start_day + dayOffset
 
-            if (should_drop_exposure(config$noise)) next
+            if (shouldDropExposure(config$noise)) next
 
-            exp_idx <- exp_idx + 1L
-            exposures[[exp_idx]] <- data.table(
+            expIdx <- expIdx + 1L
+            exposures[[expIdx]] <- data.table(
               patient_id = pat$patient_id,
               drug_feature_id = rule$drug_feature_id,
-              drug_exposure_start_day = abs_day,
-              drug_exposure_end_day = abs_day + 1L,
+              drug_exposure_start_day = absDay,
+              drug_exposure_end_day = absDay + 1L,
               regimen_id = line$regimen_id,
               line_number = line$line_number,
               is_supportive = TRUE
@@ -360,8 +355,8 @@ generate_drug_exposures_for_patient <- function(pat, line_plans, pack, config) {
 
 #' Build ground truth regimen episodes from line plans
 #' @keywords internal
-build_ground_truth_episodes <- function(pat, line_plans, pack) {
-  if (nrow(line_plans) == 0) {
+buildGroundTruthEpisodes <- function(pat, linePlans, pack) {
+  if (nrow(linePlans) == 0) {
     return(data.table(
       patient_id = integer(0), episode_id = integer(0),
       regimen_id = character(0), regimen_name = character(0),
@@ -370,20 +365,20 @@ build_ground_truth_episodes <- function(pat, line_plans, pack) {
     ))
   }
 
-  regimen_map <- setNames(pack$regimen_catalog$regimen_name,
-                          pack$regimen_catalog$regimen_id)
+  regimenMap <- setNames(pack$regimenCatalog$regimen_name,
+                         pack$regimenCatalog$regimen_id)
 
   data.table(
     patient_id = pat$patient_id,
-    episode_id = seq_len(nrow(line_plans)),
-    regimen_id = line_plans$regimen_id,
+    episode_id = seq_len(nrow(linePlans)),
+    regimen_id = linePlans$regimen_id,
     regimen_name = ifelse(
-      line_plans$regimen_id %in% names(regimen_map),
-      regimen_map[line_plans$regimen_id],
-      line_plans$regimen_id
+      linePlans$regimen_id %in% names(regimenMap),
+      regimenMap[linePlans$regimen_id],
+      linePlans$regimen_id
     ),
-    episode_start_day = line_plans$line_start_day,
-    episode_end_day = line_plans$line_end_day,
-    line_number = line_plans$line_number
+    episode_start_day = linePlans$line_start_day,
+    episode_end_day = linePlans$line_end_day,
+    line_number = linePlans$line_number
   )
 }

@@ -18,37 +18,36 @@
 
 args <- commandArgs(trailingOnly = TRUE)
 
-# Simple argument parser
-get_arg <- function(flag, default = NULL) {
+getArg <- function(flag, default = NULL) {
   idx <- which(args == flag)
   if (length(idx) == 0) return(default)
   if (idx >= length(args)) return(default)
   args[idx + 1]
 }
 
-has_flag <- function(flag) {
+hasFlag <- function(flag) {
   flag %in% args
 }
 
 library(OncoRegimenTester)
 
-noise <- noise_config(
-  probability_jitter_sd = as.numeric(get_arg("--noise_prob", "0")),
-  duration_jitter_days = as.integer(get_arg("--noise_dur", "0")),
-  cycle_jitter_days = as.integer(get_arg("--noise_cycle", "0")),
-  missingness_rate = as.numeric(get_arg("--noise_miss", "0"))
+noise <- noiseConfig(
+  probabilityJitterSd = as.numeric(getArg("--noise_prob", "0")),
+  durationJitterDays = as.integer(getArg("--noise_dur", "0")),
+  cycleJitterDays = as.integer(getArg("--noise_cycle", "0")),
+  missingnessRate = as.numeric(getArg("--noise_miss", "0"))
 )
 
-config <- simulator_config(
-  param_dir = get_arg("--param_dir", "inst/example_params/mCRC"),
-  output_dir = get_arg("--output_dir", "output"),
-  seed = as.integer(get_arg("--seed", "42")),
-  n_patients = as.integer(get_arg("--n_patients", "100")),
+config <- simulatorConfig(
+  paramDir = getArg("--param_dir", "inst/example_params/mCRC"),
+  outputDir = getArg("--output_dir", "output"),
+  seed = as.integer(getArg("--seed", "42")),
+  nPatients = as.integer(getArg("--n_patients", "100")),
   noise = noise,
-  omop_output = !has_flag("--no_omop"),
-  cohort_id = get_arg("--cohort_id")
+  omopOutput = !hasFlag("--no_omop"),
+  cohortId = getArg("--cohort_id")
 )
 
-result <- run_simulation(config)
+result <- runSimulation(config)
 
-message("\nDone. Output in: ", config$output_dir)
+message("\nDone. Output in: ", config$outputDir)

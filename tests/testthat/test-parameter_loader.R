@@ -1,69 +1,68 @@
-test_that("load_parameter_pack loads example mCRC data", {
-  param_dir <- system.file("example_params", "mCRC", package = "OncoRegimenTester")
-  if (param_dir == "") {
-    param_dir <- file.path("inst", "example_params", "mCRC")
+test_that("loadParameterPack loads example mCRC data", {
+  paramDir <- system.file("example_params", "mCRC", package = "OncoRegimenTester")
+  if (paramDir == "") {
+    paramDir <- file.path("inst", "example_params", "mCRC")
   }
-  if (!dir.exists(param_dir)) skip("Example params not found")
+  if (!dir.exists(paramDir)) skip("Example params not found")
 
-  pack <- load_parameter_pack(param_dir)
+  pack <- loadParameterPack(paramDir)
 
-  expect_s3_class(pack, "parameter_pack")
+  expect_s3_class(pack, "parameterPack")
   expect_true(nrow(pack$manifest) > 0)
-  expect_true(nrow(pack$cohort_population) > 0)
-  expect_true(nrow(pack$treatment_profile_mix) > 0)
-  expect_true(nrow(pack$drug_feature_catalog) > 0)
-  expect_true(nrow(pack$regimen_catalog) > 0)
-  expect_true(nrow(pack$regimen_drug_map) > 0)
-  expect_true(nrow(pack$profile_regimen_start) > 0)
-  expect_true(nrow(pack$regimen_transition) > 0)
-  expect_true(nrow(pack$regimen_duration) > 0)
-  expect_true(nrow(pack$drug_schedule) > 0)
+  expect_true(nrow(pack$cohortPopulation) > 0)
+  expect_true(nrow(pack$treatmentProfileMix) > 0)
+  expect_true(nrow(pack$drugFeatureCatalog) > 0)
+  expect_true(nrow(pack$regimenCatalog) > 0)
+  expect_true(nrow(pack$regimenDrugMap) > 0)
+  expect_true(nrow(pack$profileRegimenStart) > 0)
+  expect_true(nrow(pack$regimenTransition) > 0)
+  expect_true(nrow(pack$regimenDuration) > 0)
+  expect_true(nrow(pack$drugSchedule) > 0)
 })
 
 
-test_that("check_columns catches missing columns", {
+test_that("checkColumns catches missing columns", {
   dt <- data.table::data.table(a = 1, b = 2)
   expect_error(
-    OncoRegimenTester:::check_columns(dt, c("a", "b", "c"), "test.csv"),
+    OncoRegimenTester:::checkColumns(dt, c("a", "b", "c"), "test.csv"),
     "missing required columns"
   )
 })
 
 
-test_that("check_probability_groups detects bad sums", {
+test_that("checkProbabilityGroups detects bad sums", {
   dt <- data.table::data.table(
     group = c("A", "A", "B", "B"),
     prob = c(0.3, 0.3, 0.5, 0.5)
   )
-  warnings <- OncoRegimenTester:::check_probability_groups(
+  warnings <- OncoRegimenTester:::checkProbabilityGroups(
     dt, "group", "prob", "test.csv"
   )
   # Group A sums to 0.6, should warn
-
-expect_true(length(warnings) > 0)
+  expect_true(length(warnings) > 0)
   expect_true(any(grepl("group.*A", warnings, ignore.case = TRUE)))
 })
 
 
-test_that("parse_bool handles various inputs", {
-  expect_true(OncoRegimenTester:::parse_bool("TRUE"))
-  expect_true(OncoRegimenTester:::parse_bool("1"))
-  expect_true(OncoRegimenTester:::parse_bool("yes"))
-  expect_false(OncoRegimenTester:::parse_bool("FALSE"))
-  expect_false(OncoRegimenTester:::parse_bool("0"))
-  expect_false(OncoRegimenTester:::parse_bool("no"))
+test_that("parseBool handles various inputs", {
+  expect_true(OncoRegimenTester:::parseBool("TRUE"))
+  expect_true(OncoRegimenTester:::parseBool("1"))
+  expect_true(OncoRegimenTester:::parseBool("yes"))
+  expect_false(OncoRegimenTester:::parseBool("FALSE"))
+  expect_false(OncoRegimenTester:::parseBool("0"))
+  expect_false(OncoRegimenTester:::parseBool("no"))
 })
 
 
-test_that("validate_parameter_pack returns summary", {
-  param_dir <- system.file("example_params", "mCRC", package = "OncoRegimenTester")
-  if (param_dir == "") {
-    param_dir <- file.path("inst", "example_params", "mCRC")
+test_that("validateParameterPack returns summary", {
+  paramDir <- system.file("example_params", "mCRC", package = "OncoRegimenTester")
+  if (paramDir == "") {
+    paramDir <- file.path("inst", "example_params", "mCRC")
   }
-  if (!dir.exists(param_dir)) skip("Example params not found")
+  if (!dir.exists(paramDir)) skip("Example params not found")
 
-  pack <- load_parameter_pack(param_dir)
-  result <- validate_parameter_pack(pack)
+  pack <- loadParameterPack(paramDir)
+  result <- validateParameterPack(pack)
 
   expect_true(is.list(result))
   expect_true("valid" %in% names(result))
