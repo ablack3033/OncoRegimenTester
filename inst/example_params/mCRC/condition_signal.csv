@@ -1,0 +1,9 @@
+cohort_id,profile_id,window_id,condition_feature_id,prevalence
+mCRC,chemo_combo,pre_index,colorectal_cancer,0.95
+mCRC,chemo_combo,line_1,nausea,0.40
+mCRC,chemo_combo,line_1,neuropathy,0.25
+mCRC,maintenance_path,pre_index,colorectal_cancer,0.95
+mCRC,maintenance_path,line_1,nausea,0.35
+mCRC,maintenance_path,line_1,neuropathy,0.20
+mCRC,targeted_immuno,pre_index,colorectal_cancer,0.95
+mCRC,targeted_immuno,line_1,immune_related_ae,0.30

@@ -1,0 +1,12 @@
+regimen_id,drug_feature_id,probability,ignore_for_regimen_detection_flag
+FOLFOX,dexamethasone,0.70,TRUE
+FOLFOX,ondansetron,0.60,TRUE
+FOLFOX_bev,dexamethasone,0.75,TRUE
+FOLFOX_bev,ondansetron,0.65,TRUE
+FOLFIRI,dexamethasone,0.70,TRUE
+FOLFIRI,ondansetron,0.60,TRUE
+FOLFIRI_bev,dexamethasone,0.75,TRUE
+FOLFIRI_bev,ondansetron,0.65,TRUE
+CAPOX,dexamethasone,0.60,TRUE
+CAPOX,ondansetron,0.55,TRUE
+pembro_mono,dexamethasone,0.30,TRUE

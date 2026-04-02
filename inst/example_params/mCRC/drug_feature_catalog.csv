@@ -1,0 +1,10 @@
+drug_feature_id,drug_feature_name,drug_class,is_antineoplastic,is_supportive,route_group,concept_set_name
+fluorouracil,Fluorouracil,antimetabolite,TRUE,FALSE,IV,fluorouracil_cs
+leucovorin,Leucovorin,vitamin,FALSE,FALSE,IV,leucovorin_cs
+oxaliplatin,Oxaliplatin,platinum,TRUE,FALSE,IV,oxaliplatin_cs
+irinotecan,Irinotecan,topoisomerase_inhibitor,TRUE,FALSE,IV,irinotecan_cs
+bevacizumab,Bevacizumab,anti_VEGF,TRUE,FALSE,IV,bevacizumab_cs
+capecitabine,Capecitabine,antimetabolite,TRUE,FALSE,oral,capecitabine_cs
+pembrolizumab,Pembrolizumab,anti_PD1,TRUE,FALSE,IV,pembrolizumab_cs
+dexamethasone,Dexamethasone,corticosteroid,FALSE,TRUE,IV,dexamethasone_cs
+ondansetron,Ondansetron,antiemetic,FALSE,TRUE,IV,ondansetron_cs

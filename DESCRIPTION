@@ -1,0 +1,25 @@
+Package: OncoRegimenTester
+Title: Synthetic OMOP CDM Simulator for Oncology Regimen Detection Testing
+Version: 0.1.0
+Authors@R: person("Author", "Name", role = c("aut", "cre"), email = "author@example.com")
+Description: White-box simulator that generates fake but structurally believable
+    oncology treatment histories in OMOP-like tables. Designed for method testing,
+    algorithm development, and benchmarking regimen detection logic using
+    interpretable CSV parameter packs. Supports CDMConnector CDM reference
+    objects for direct integration with OHDSI tooling.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.1
+Depends: R (>= 4.1.0)
+Imports:
+    data.table
+Suggests:
+    testthat (>= 3.0.0),
+    CDMConnector,
+    DBI,
+    duckdb,
+    knitr,
+    rmarkdown
+Config/testthat/edition: 3
+VignetteBuilder: knitr

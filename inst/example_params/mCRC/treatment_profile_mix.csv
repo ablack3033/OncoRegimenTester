@@ -1,0 +1,13 @@
+cohort_id,age_group,sex,profile_id,profile_label,proportion
+mCRC,50_64,M,chemo_combo,Chemo Combination Responder,0.45
+mCRC,50_64,M,maintenance_path,Maintenance Path,0.30
+mCRC,50_64,M,targeted_immuno,Targeted Immunotherapy,0.25
+mCRC,50_64,F,chemo_combo,Chemo Combination Responder,0.45
+mCRC,50_64,F,maintenance_path,Maintenance Path,0.30
+mCRC,50_64,F,targeted_immuno,Targeted Immunotherapy,0.25
+mCRC,65_79,M,chemo_combo,Chemo Combination Responder,0.50
+mCRC,65_79,M,maintenance_path,Maintenance Path,0.35
+mCRC,65_79,M,targeted_immuno,Targeted Immunotherapy,0.15
+mCRC,65_79,F,chemo_combo,Chemo Combination Responder,0.50
+mCRC,65_79,F,maintenance_path,Maintenance Path,0.35
+mCRC,65_79,F,targeted_immuno,Targeted Immunotherapy,0.15
