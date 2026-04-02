@@ -28,6 +28,10 @@ parseObsLengthBin <- function(binLabel) {
     return(start + sample.int(366, 1) - 1L)
   }
   parts <- as.integer(strsplit(binLabel, "_")[[1]])
+  if (length(parts) != 2 || anyNA(parts)) {
+    warning("Invalid obs_length_bin: ", binLabel, ". Using default 365.")
+    return(365L)
+  }
   sample(parts[1]:parts[2], 1)
 }
 

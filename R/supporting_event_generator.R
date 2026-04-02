@@ -54,9 +54,12 @@ generateSupportingEvents <- function(patients, linePlans, pack, config) {
   allMeasurements <- list()
   ci <- 0L; pi <- 0L; mi <- 0L
 
+  linesByPatient <- split(linePlans, linePlans$patient_id)
+
   for (i in seq_len(nrow(patients))) {
     pat <- patients[i]
-    patLines <- linePlans[linePlans$patient_id == pat$patient_id, ]
+    patLines <- linesByPatient[[as.character(pat$patient_id)]]
+    if (is.null(patLines)) patLines <- linePlans[0, ]
 
     if (config$generateConditions && nrow(pack$conditionSignal) > 0) {
       signals <- pack$conditionSignal[
@@ -67,7 +70,9 @@ generateSupportingEvents <- function(patients, linePlans, pack, config) {
         sig <- signals[j]
         if (runif(1) < sig$prevalence) {
           dayRange <- windowToDayRange(sig$window_id, patLines)
-          day <- sample(dayRange[1]:max(dayRange[1], dayRange[2] - 1L), 1)
+          dayLo <- dayRange[1]
+          dayHi <- max(dayRange[1], dayRange[2] - 1L)
+          day <- if (dayLo == dayHi) dayLo else sample(dayLo:dayHi, 1)
           ci <- ci + 1L
           allConditions[[ci]] <- data.table(
             patient_id = pat$patient_id,
@@ -88,7 +93,9 @@ generateSupportingEvents <- function(patients, linePlans, pack, config) {
         sig <- signals[j]
         if (runif(1) < sig$prevalence) {
           dayRange <- windowToDayRange(sig$window_id, patLines)
-          day <- sample(dayRange[1]:max(dayRange[1], dayRange[2] - 1L), 1)
+          dayLo <- dayRange[1]
+          dayHi <- max(dayRange[1], dayRange[2] - 1L)
+          day <- if (dayLo == dayHi) dayLo else sample(dayLo:dayHi, 1)
           pi <- pi + 1L
           allProcedures[[pi]] <- data.table(
             patient_id = pat$patient_id,
@@ -108,7 +115,9 @@ generateSupportingEvents <- function(patients, linePlans, pack, config) {
         sig <- signals[j]
         if (runif(1) < sig$prevalence) {
           dayRange <- windowToDayRange(sig$window_id, patLines)
-          day <- sample(dayRange[1]:max(dayRange[1], dayRange[2] - 1L), 1)
+          dayLo <- dayRange[1]
+          dayHi <- max(dayRange[1], dayRange[2] - 1L)
+          day <- if (dayLo == dayHi) dayLo else sample(dayLo:dayHi, 1)
 
           valueBin <- NA_character_
           if (nrow(pack$measurementValueDist) > 0) {

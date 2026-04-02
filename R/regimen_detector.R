@@ -113,13 +113,15 @@ detectRegimens <- function(exposures, pack,
     # Group into windows by gaps
     windows <- list()
     currentWindow <- list(patExp[1, ])
+    lastEnd <- patExp$drug_exposure_end_day[1]
     for (k in seq_len(nrow(patExp))[-1]) {
-      lastEnd <- max(sapply(currentWindow, function(x) x$drug_exposure_end_day))
       if (patExp$drug_exposure_start_day[k] - lastEnd > overlapWindow) {
         windows[[length(windows) + 1L]] <- rbindlist(currentWindow)
         currentWindow <- list(patExp[k, ])
+        lastEnd <- patExp$drug_exposure_end_day[k]
       } else {
         currentWindow[[length(currentWindow) + 1L]] <- patExp[k, ]
+        lastEnd <- max(lastEnd, patExp$drug_exposure_end_day[k])
       }
     }
     windows[[length(windows) + 1L]] <- rbindlist(currentWindow)

@@ -21,6 +21,10 @@ parseDurationBin <- function(binLabel, noise) {
     base <- start + sample.int(180, 1) - 1L
   } else {
     parts <- as.integer(strsplit(binLabel, "_")[[1]])
+    if (length(parts) != 2 || anyNA(parts)) {
+      warning("Invalid duration_bin: ", binLabel, ". Using default 84.")
+      return(jitterDuration(84L, noise))
+    }
     base <- sample(parts[1]:parts[2], 1)
   }
   jitterDuration(base, noise)
@@ -84,10 +88,9 @@ sampleTransition <- function(pack, cohortId, profileId, fromRegimenId, noise) {
   if (nrow(candidates) == 0) {
     return(list(transitionType = "discontinue", toRegimenId = ""))
   }
-  w <- as.numeric(candidates$probability)
-  w <- w / sum(w)
-  w <- jitterProbabilities(w, noise)
-  idx <- sample.int(nrow(candidates), 1, prob = w)
+  idx <- as.integer(weightedSample(
+    seq_len(nrow(candidates)), candidates$probability, noise
+  ))
   list(
     transitionType = candidates$transition_type[idx],
     toRegimenId = candidates$to_regimen_id[idx]
@@ -242,6 +245,10 @@ generateDrugExposuresForPatient <- function(pat, linePlans, pack, config) {
     ))
   }
 
+  # Pre-build lookups by regimen_id
+  schedByRegimen <- split(pack$drugSchedule, pack$drugSchedule$regimen_id)
+  suppByRegimen <- split(pack$supportiveDrugRules, pack$supportiveDrugRules$regimen_id)
+
   exposures <- list()
   expIdx <- 0L
 
@@ -250,13 +257,15 @@ generateDrugExposuresForPatient <- function(pat, linePlans, pack, config) {
     activeDrugs <- getActiveDrugs(pack, line$regimen_id, pat)
 
     rid <- line$regimen_id
-    schedules <- pack$drugSchedule[pack$drugSchedule$regimen_id == rid, ]
+    schedules <- schedByRegimen[[rid]]
+    if (is.null(schedules)) schedules <- pack$drugSchedule[0, ]
     schedMap <- setNames(
       split(schedules, seq_len(nrow(schedules))),
       schedules$drug_feature_id
     )
 
     lineDuration <- line$line_end_day - line$line_start_day
+    if (lineDuration <= 0L) next
 
     for (di in seq_len(nrow(activeDrugs))) {
       drugId <- activeDrugs$drug_feature_id[di]
@@ -310,9 +319,8 @@ generateDrugExposuresForPatient <- function(pat, linePlans, pack, config) {
       }
     }
 
-    suppRules <- pack$supportiveDrugRules[
-      pack$supportiveDrugRules$regimen_id == rid,
-    ]
+    suppRules <- suppByRegimen[[rid]]
+    if (is.null(suppRules)) suppRules <- pack$supportiveDrugRules[0, ]
     if (nrow(suppRules) > 0) {
       for (si in seq_len(nrow(suppRules))) {
         rule <- suppRules[si]
